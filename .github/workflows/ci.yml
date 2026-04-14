@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.2', '8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Lint PHP sources
+        run: find src bin -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Run doctor
+        run: ./bin/wp-boost doctor
+
+      - name: Install into a plugin fixture
+        run: |
+          mkdir -p /tmp/fixture && cd /tmp/fixture
+          echo '<?php /* Plugin Name: Demo */' > demo.php
+          "$GITHUB_WORKSPACE/bin/wp-boost" install \
+            --preset=plugin \
+            --agents=claude_code,cursor \
+            --yes
+
+      - name: Assert skills were written
+        run: |
+          test -d /tmp/fixture/.claude/skills/wp-plugin-development
+          test -f /tmp/fixture/.cursor/rules/wp-plugin-development.mdc
+          test -f /tmp/fixture/wp-boost.lock.json
+
+      - name: Update from bundled snapshot
+        run: |
+          cd /tmp/fixture
+          "$GITHUB_WORKSPACE/bin/wp-boost" update
+
+      - name: Sync bundle from upstream (network)
+        run: ./bin/wp-boost sync --upstream
+
+      - name: Verify bundle metadata written
+        run: |
+          test -f skills/.bundle.json
+          php -r '$j=json_decode(file_get_contents("skills/.bundle.json"),true); exit(preg_match("/^[0-9a-f]{40}$/",$j["sha"]??"")?0:1);'

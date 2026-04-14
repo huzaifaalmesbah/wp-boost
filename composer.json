@@ -1,0 +1,29 @@
+{
+    "name": "huzaifaalmesbah/wp-boost",
+    "description": "Install official WordPress agent skills into your project for Claude Code, Cursor, Copilot, Codex, Windsurf, Zed and more.",
+    "type": "library",
+    "keywords": ["wordpress", "ai", "agent-skills", "claude", "cursor", "copilot"],
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Huzaifa Al Mesbah",
+            "homepage": "https://github.com/huzaifaalmesbah"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "symfony/console": "^6.4 || ^7.0",
+        "symfony/process": "^6.4 || ^7.0",
+        "symfony/filesystem": "^6.4 || ^7.0",
+        "laravel/prompts": "^0.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "Huzaifa\\WpBoost\\": "src/"
+        }
+    },
+    "bin": ["bin/wp-boost"],
+    "config": {
+        "sort-packages": true
+    }
+}

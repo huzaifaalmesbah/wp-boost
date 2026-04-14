@@ -1,0 +1,37 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+$autoloaders = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../autoload.php',
+    __DIR__ . '/../../autoload.php',
+];
+
+$loaded = false;
+foreach ($autoloaders as $file) {
+    if (file_exists($file)) {
+        require $file;
+        $loaded = true;
+        break;
+    }
+}
+
+if (! $loaded) {
+    fwrite(STDERR, "wp-boost: composer autoload not found. Run `composer install` in the wp-boost package.\n");
+    exit(1);
+}
+
+use Symfony\Component\Console\Application;
+use Huzaifa\WpBoost\Commands\InstallCommand;
+use Huzaifa\WpBoost\Commands\UpdateCommand;
+use Huzaifa\WpBoost\Commands\DoctorCommand;
+use Huzaifa\WpBoost\Commands\SyncCommand;
+
+$app = new Application('wp-boost', '0.1.0');
+$app->add(new InstallCommand());
+$app->add(new UpdateCommand());
+$app->add(new DoctorCommand());
+$app->add(new SyncCommand());
+$app->run();

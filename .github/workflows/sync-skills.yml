@@ -1,0 +1,83 @@
+name: Sync WordPress agent skills
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # every Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout wp-boost
+        uses: actions/checkout@v4
+
+      - name: Checkout WordPress/agent-skills
+        uses: actions/checkout@v4
+        with:
+          repository: WordPress/agent-skills
+          ref: trunk
+          path: .upstream-agent-skills
+
+      - name: Reject symlinks in upstream skills
+        run: |
+          if find .upstream-agent-skills/skills -type l | grep -q .; then
+            echo "Upstream skills contain symlinks — refusing to bundle."
+            find .upstream-agent-skills/skills -type l
+            exit 1
+          fi
+
+      - name: Record upstream commit SHA
+        id: upstream
+        run: |
+          SHA=$(git -C .upstream-agent-skills rev-parse HEAD)
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "short=${SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Snapshot skills into bundle
+        run: |
+          rm -rf skills
+          mkdir skills
+          cp -R .upstream-agent-skills/skills/. skills/
+
+      - name: Write bundle metadata
+        run: |
+          SYNCED_AT=$(date -u +%Y-%m-%dT%H:%M:%S+00:00)
+          cat > skills/.bundle.json <<EOF
+          {
+              "syncedAt": "${SYNCED_AT}",
+              "sha": "${{ steps.upstream.outputs.sha }}",
+              "source": "WordPress/agent-skills@trunk"
+          }
+          EOF
+          rm -rf .upstream-agent-skills
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if [ -n "$(git status --porcelain skills)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open pull request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/sync-skills
+          base: main
+          commit-message: "chore(skills): sync from WordPress/agent-skills@${{ steps.upstream.outputs.short }}"
+          title: "chore(skills): sync from WordPress/agent-skills@${{ steps.upstream.outputs.short }}"
+          body: |
+            Automated snapshot refresh from [`WordPress/agent-skills@${{ steps.upstream.outputs.short }}`](https://github.com/WordPress/agent-skills/tree/${{ steps.upstream.outputs.sha }}).
+
+            Review the diff in `skills/` before merging. After merge, tag a new release so Packagist users get the updated bundle.
+          labels: |
+            skills
+            automated
+          delete-branch: true

@@ -1,0 +1,48 @@
+# Composer
+/vendor/
+composer.lock
+composer.phar
+
+# npm
+/node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+npm-debug.log*
+
+# Build / dist
+/build/
+/dist/
+*.phar
+*.tar.gz
+
+# Local env
+.env
+.env.*
+!.env.example
+
+# Claude Code
+.claude/settings.local.json
+.claude/memory/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Tool caches
+.phpunit.result.cache
+.phpunit.cache/
+.php-cs-fixer.cache
+.phpstan.cache/
+.rector.cache/
+
+# Runtime artifacts
+wp-boost.lock.json
+/tmp/

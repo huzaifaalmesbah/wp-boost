@@ -1,0 +1,66 @@
+{
+    "version": 1,
+    "agents": {
+        "claude_code": {
+            "displayName": "Claude Code",
+            "detect": { "paths": [".claude"], "files": ["CLAUDE.md"], "commands": ["claude"] },
+            "skillsPath": ".claude/skills",
+            "guidelinesPath": "CLAUDE.md",
+            "mcpConfigPath": ".mcp.json"
+        },
+        "cursor": {
+            "displayName": "Cursor",
+            "detect": { "paths": [".cursor"], "files": [".cursorrules"] },
+            "skillsPath": ".cursor/rules",
+            "guidelinesPath": ".cursor/rules/wp-boost.mdc",
+            "skillFormat": "mdc"
+        },
+        "copilot": {
+            "displayName": "GitHub Copilot",
+            "detect": { "paths": [".github"], "files": [".github/copilot-instructions.md"] },
+            "skillsPath": ".github/instructions",
+            "guidelinesPath": ".github/copilot-instructions.md"
+        },
+        "codex": {
+            "displayName": "OpenAI Codex CLI",
+            "detect": { "paths": [".codex"], "files": ["AGENTS.md"], "commands": ["codex"] },
+            "skillsPath": ".codex/skills",
+            "guidelinesPath": "AGENTS.md"
+        },
+        "windsurf": {
+            "displayName": "Windsurf",
+            "detect": { "paths": [".windsurf"], "files": [".windsurfrules"] },
+            "skillsPath": ".windsurf/rules",
+            "guidelinesPath": ".windsurfrules"
+        },
+        "zed": {
+            "displayName": "Zed",
+            "detect": { "paths": [".zed"], "commands": ["zed"] },
+            "skillsPath": ".zed/skills",
+            "guidelinesPath": ".rules"
+        },
+        "gemini": {
+            "displayName": "Gemini CLI",
+            "detect": { "files": ["GEMINI.md"], "commands": ["gemini"] },
+            "skillsPath": ".gemini/skills",
+            "guidelinesPath": "GEMINI.md"
+        },
+        "junie": {
+            "displayName": "JetBrains Junie",
+            "detect": { "paths": [".junie"] },
+            "skillsPath": ".junie/skills",
+            "guidelinesPath": ".junie/guidelines.md"
+        },
+        "opencode": {
+            "displayName": "OpenCode",
+            "detect": { "paths": [".opencode"], "commands": ["opencode"] },
+            "skillsPath": ".opencode/skills",
+            "guidelinesPath": "AGENTS.md"
+        }
+    },
+    "skillsSource": {
+        "repo": "WordPress/agent-skills",
+        "branch": "trunk",
+        "path": "skills"
+    }
+}
