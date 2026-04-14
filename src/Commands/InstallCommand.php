@@ -124,7 +124,8 @@ final class InstallCommand extends Command
         $this->writeLock($projectRoot, $selectedAgents, array_keys($skillsToInstall));
 
         $output->writeln('');
-        $output->writeln('<info>Done.</info> Run <comment>wp-boost update --remote</comment> later to pull newer skills from the official repo.');
+        $output->writeln('<info>Done.</info> Run <comment>wp-boost update --remote</comment> to refresh skills.');
+        $output->writeln('Use <comment>wp-boost sync --upstream</comment> to pull from WordPress/agent-skills@trunk (bleeding edge).');
 
         return Command::SUCCESS;
     }
