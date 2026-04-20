@@ -86,12 +86,13 @@ wp-boost/
 ├── src/
 │   ├── Agents/                # agents.json loader + agent detection
 │   ├── Commands/              # install, update, sync, doctor
-│   ├── Detection/             # project-type detection (plugin/theme/bedrock/…)
+│   ├── Detection/             # project-type detection (plugin/block-theme/core)
 │   ├── Skills/                # fetcher, composer, writer, bundle metadata
 │   └── Support/               # Paths, Freshness
 ├── skills/                    # bundled snapshot of WordPress/agent-skills
 │   └── .bundle.json           # syncedAt + commit SHA + source (never hand-edit)
 ├── agents.json                # supported AI agents
+├── presets.json               # project-type presets + recommended skills
 ├── composer.json
 └── .github/workflows/         # CI matrix + weekly upstream sync
 ```
@@ -143,6 +144,36 @@ Edit [`agents.json`](./agents.json) and add an entry:
 Test the detection by creating the matching file/folder in a scratch dir, then running `wp-boost doctor`.
 
 Open a PR at [huzaifaalmesbah/wp-boost/pulls](https://github.com/huzaifaalmesbah/wp-boost/pulls).
+
+## Adding or tweaking a project-type preset
+
+Project-type presets (what skills a "plugin" or "block-theme" project gets by default) live in [`presets.json`](./presets.json) — **no PHP changes required** for this kind of contribution.
+
+```json
+"plugin": {
+    "displayName": "WordPress plugin",
+    "recommendedSkills": [
+        "wp-plugin-development",
+        "wp-wpcli-and-ops",
+        "wp-phpstan",
+        "wp-rest-api",
+        "wp-abilities-api"
+    ]
+}
+```
+
+| Field | Purpose |
+|---|---|
+| `displayName` | Label shown by `wp-boost doctor` in the "Install by project type" block. |
+| `recommendedSkills` | Skill names pre-selected in the interactive picker and used by `--yes` installs. Each must match a directory name under `skills/`. |
+
+To add a **new** preset (e.g. `woocommerce`, `multisite`, `classic-theme`, `bedrock`), add the JSON entry **and** add a matching detection branch in [`src/Detection/ProjectType.php`](./src/Detection/ProjectType.php) so `wp-boost` can auto-select it. Users can always pick any preset manually with `--preset=<name>`.
+
+Verify with:
+
+```bash
+php bin/wp-boost doctor       # shows all presets in the "Install by project type" block
+```
 
 ## Local testing
 

@@ -22,6 +22,11 @@ final class Paths
         return self::packageRoot() . '/agents.json';
     }
 
+    public static function presetsManifest(): string
+    {
+        return self::packageRoot() . '/presets.json';
+    }
+
     public static function projectRoot(): string
     {
         return getcwd() ?: self::packageRoot();

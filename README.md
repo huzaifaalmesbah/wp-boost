@@ -1,6 +1,6 @@
 # wp-boost
 
-Install the official **WordPress agent skills** into your project for Claude Code, Cursor, GitHub Copilot, OpenAI Codex, Windsurf, Zed, Gemini CLI, Junie, and OpenCode — the same idea as `laravel/boost`, but for WordPress plugins, themes, and Bedrock stacks.
+Install the official **WordPress agent skills** into your project for Claude Code, Cursor, GitHub Copilot, OpenAI Codex, Windsurf, Zed, Gemini CLI, Junie, and OpenCode — the same idea as `laravel/boost`, but for WordPress plugins and block themes.
 
 Skills are sourced from [`WordPress/agent-skills`](https://github.com/WordPress/agent-skills). wp-boost bundles a pinned snapshot and can pull the latest on demand.
 
@@ -66,7 +66,7 @@ wp-boost --version
 
 ## Use
 
-Inside any WordPress plugin, theme, or Bedrock project:
+Inside any WordPress plugin or block theme project:
 
 ```bash
 cd /path/to/your-project
@@ -75,7 +75,7 @@ wp-boost install
 
 wp-boost will:
 
-1. **Detect your project type** (plugin, classic theme, block theme, Bedrock, core) and pre-select recommended skills.
+1. **Detect your project type** (plugin, block theme, core) and pre-select recommended skills.
 2. **Detect which AI agents you already use** (by looking for `.claude/`, `.cursor/`, `.github/`, etc.) and pre-select them.
 3. Let you confirm or change the selection.
 4. Copy the right files into each agent's skills directory and write `wp-boost.lock.json`.
@@ -282,11 +282,27 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full dev guide: local setup, pr
 
 ---
 
-## Credits
+## Credits & attribution
 
-- **[WordPress/agent-skills](https://github.com/WordPress/agent-skills)** — the WordPress contributors who author and maintain the skills this tool installs. wp-boost is just a distributor; all skill content belongs to them.
+wp-boost is a downstream **distributor**, not an author of the skill content. Everything inside the `skills/` directory is an unmodified redistribution from upstream — please credit upstream first whenever you share or fork this project.
+
+### Primary credit — skill authors
+
+> **[WordPress/agent-skills](https://github.com/WordPress/agent-skills)** — the WordPress contributors who author, review, and maintain every `SKILL.md` this tool installs. All skill content, examples, and guidance are their work and their copyright, licensed GPL-2.0-or-later.
+
+If a skill helped you, please **★ star their repo** and file issues / PRs against **their** tracker, not this one. Skill-content changes made against wp-boost cannot be accepted — they must land upstream so the whole WordPress + AI community benefits.
+
+### Snapshot provenance
+
+The bundled `skills/` directory is a pinned snapshot of `WordPress/agent-skills@trunk`. The exact upstream commit is recorded in [`skills/.bundle.json`](./skills/.bundle.json) (`sha`, `syncedAt`, `source`) and stamped into every project's `wp-boost.lock.json` on install, so you can always trace a skill file back to the upstream commit it came from.
+
+An automated job — [`.github/workflows/sync-skills.yml`](./.github/workflows/sync-skills.yml) — runs every Monday and opens a PR bumping the snapshot whenever upstream has moved. Under normal conditions the bundle is **never more than 7 days behind** `WordPress/agent-skills@trunk`.
+
+### Also thanks to
+
 - **The WordPress community** — for building and maintaining the ecosystem this tool serves.
-- Inspired by [`laravel/boost`](https://github.com/laravel/boost), which does the same job for the Laravel ecosystem.
+- **[`laravel/boost`](https://github.com/laravel/boost)** — the inspiration for the UX pattern: auto-detect the project + the agents the developer already uses, then install the right skills in one shot. wp-boost does the same job for the WordPress ecosystem.
+- **Every contributor** to the AI coding agents this tool targets (Claude Code, Cursor, GitHub Copilot, Codex, Windsurf, Zed, Gemini CLI, Junie, OpenCode) for shipping the skills / rules / instructions protocols this installer plugs into.
 
 ---
 

@@ -1,0 +1,40 @@
+{
+    "version": 1,
+    "presets": {
+        "plugin": {
+            "displayName": "WordPress plugin",
+            "recommendedSkills": [
+                "wp-plugin-development",
+                "wp-wpcli-and-ops",
+                "wp-phpstan",
+                "wp-rest-api",
+                "wp-abilities-api"
+            ]
+        },
+        "block-theme": {
+            "displayName": "Block (FSE) theme",
+            "recommendedSkills": [
+                "wp-block-themes",
+                "wp-block-development",
+                "wp-interactivity-api",
+                "wp-performance"
+            ]
+        },
+        "core": {
+            "displayName": "WordPress core install",
+            "recommendedSkills": [
+                "wp-plugin-development",
+                "wp-wpcli-and-ops",
+                "wp-performance",
+                "wp-project-triage"
+            ]
+        },
+        "unknown": {
+            "displayName": "Unknown / generic PHP project",
+            "recommendedSkills": [
+                "wp-plugin-development",
+                "wp-wpcli-and-ops"
+            ]
+        }
+    }
+}

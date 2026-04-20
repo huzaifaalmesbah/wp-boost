@@ -29,7 +29,7 @@ use Huzaifa\WpBoost\Commands\UpdateCommand;
 use Huzaifa\WpBoost\Commands\DoctorCommand;
 use Huzaifa\WpBoost\Commands\SyncCommand;
 
-$app = new Application('wp-boost', '0.1.1');
+$app = new Application('wp-boost', '0.1.2');
 $app->add(new InstallCommand());
 $app->add(new UpdateCommand());
 $app->add(new DoctorCommand());
