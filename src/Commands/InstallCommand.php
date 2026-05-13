@@ -9,7 +9,6 @@ use Laravel\Prompts\Prompt;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\QuestionHelper;
-use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -144,10 +143,6 @@ final class InstallCommand extends Command
             $output->writeln('<comment>No agents selected. Aborting.</comment>');
             return Command::FAILURE;
         }
-
-        // --- Skill selection ---
-        $this->listSkills($output, $allSkills, $type);
-
         $skillChoices = [];
         foreach ($allSkills as $skill) {
             $skillChoices[$skill->name] = $skill->displayName;
@@ -234,35 +229,6 @@ final class InstallCommand extends Command
      *
      * @param array<string,\Huzaifa\WpBoost\Skills\Skill> $skills
      */
-    private function listSkills(OutputInterface $output, array $skills, string $type): void
-    {
-        $output->writeln('');
-        $output->writeln('  <comment>Available skills:</comment>');
-        $output->writeln('');
-
-        $recommendedSet = array_flip(ProjectType::recommendedSkills($type));
-
-        $rows = [];
-        foreach ($skills as $skill) {
-            $marker = isset($recommendedSet[$skill->name]) ? '  *' : '   ';
-            $rows[] = [
-                $marker,
-                $skill->displayName,
-                $skill->description !== '' ? $skill->description : '',
-            ];
-        }
-
-        $table = new Table($output);
-        $table->setStyle('compact');
-        $table->setHeaders([]);
-        $table->setRows($rows);
-        $table->render();
-
-        $output->writeln('');
-        $output->writeln('    <comment>*</comment> = recommended for your project type');
-        $output->writeln('');
-    }
-
     /**
      * @param array<int,string> $writtenAgents
      * @param array<string,\Huzaifa\WpBoost\Skills\Skill> $skills
