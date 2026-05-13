@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Huzaifa\WpBoost\Commands;
 
+use MaplePHP\Prompts\Prompt;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -17,15 +18,11 @@ use Huzaifa\WpBoost\Skills\SkillComposer;
 use Huzaifa\WpBoost\Skills\SkillWriter;
 use Huzaifa\WpBoost\Support\Paths;
 
-use function Laravel\Prompts\multiselect;
-use function Laravel\Prompts\note;
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\intro;
-use function Laravel\Prompts\outro;
-
 /**
  * Interactive `install` command: detects project type and present agents, then copies the chosen
  * skills into each agent's skills directory and writes a `wp-boost.lock.json` for later re-sync.
+ *
+ * Uses maplephp/prompts for cross-platform interactive prompts (works on Windows, macOS, Linux).
  */
 #[AsCommand(name: 'install', description: 'Install WordPress agent skills for your selected AI agents.')]
 final class InstallCommand extends Command
@@ -45,7 +42,9 @@ final class InstallCommand extends Command
         $projectRoot = $input->getOption('path') ?: Paths::projectRoot();
         $projectRoot = realpath($projectRoot) ?: $projectRoot;
 
-        intro('wp-boost · install WordPress agent skills');
+        $output->writeln('');
+        $output->writeln('  <info>wp-boost</info> · install WordPress agent skills');
+        $output->writeln('');
 
         $registry = new AgentRegistry();
         $composer = SkillComposer::fromBundled();
@@ -75,6 +74,8 @@ final class InstallCommand extends Command
         $this->printWelcome($output, $projectRoot, $type, $allSkills);
 
         $detectedAgents = $registry->detectInProject($projectRoot);
+
+        // --- Agent selection ---
         $agentChoices = [];
         foreach ($registry->all() as $name => $agent) {
             $agentChoices[$name] = $agent->displayName();
@@ -94,6 +95,7 @@ final class InstallCommand extends Command
             return Command::FAILURE;
         }
 
+        // --- Skill selection ---
         $skillChoices = [];
         foreach ($allSkills as $skill) {
             $label = $skill->displayName;
@@ -159,7 +161,6 @@ final class InstallCommand extends Command
         $syncedAt = $meta['syncedAt'] ?? 'unknown';
         $source = $meta['source'] ?? 'WordPress/agent-skills@trunk';
 
-        $output->writeln('');
         $output->writeln('  <comment>What is this?</comment>');
         $output->writeln('  wp-boost drops curated WordPress skill files into your AI agent\'s');
         $output->writeln('  config (Claude Code, Cursor, Copilot, Codex, and more) so the agent');
@@ -207,17 +208,21 @@ final class InstallCommand extends Command
         $output->writeln('    wp-boost    <info>https://github.com/huzaifaalmesbah/wp-boost</info>');
         $output->writeln('    Skills      <info>https://github.com/WordPress/agent-skills</info>');
         $output->writeln('');
-
-        outro('Skill content by WordPress/agent-skills · GPL-2.0-or-later · ♥');
+        $output->writeln('  <comment>Skill content by WordPress/agent-skills · GPL-2.0-or-later · ♥</comment>');
     }
 
     /**
-     * @param array<string,string> $choices
-     * @param array<int,string> $defaults
-     * @return array<int,string>
+     * Resolve a list of items — from explicit CLI flags, --yes defaults, or interactive prompt.
+     *
+     * Uses maplephp/prompts for cross-platform interactive selection (works on Windows, macOS, Linux).
+     *
+     * @param array<string,string> $choices  key => label map
+     * @param array<int,string>     $defaults default selection (keys)
+     * @return array<int,string>     selected keys
      */
     private function resolveList(string $explicit, array $choices, array $defaults, string $label, bool $yes, OutputInterface $output): array
     {
+        // 1. Explicit CLI flags — skip prompts entirely
         if ($explicit !== '') {
             $requested = array_filter(array_map('trim', explode(',', $explicit)), fn ($v) => $v !== '');
             $valid = [];
@@ -239,18 +244,88 @@ final class InstallCommand extends Command
             return array_values(array_unique($valid));
         }
 
+        // 2. --yes flag — use detected/recommended defaults
         if ($yes) {
             return $defaults;
         }
 
-        return multiselect(
-            label: $label,
-            options: $choices,
-            default: $defaults,
-            required: true,
-            scroll: 15,
-            hint: 'Use ↑↓ to move · Space to select · Enter to confirm · Ctrl+C to cancel',
-        );
+        // 3. Interactive prompt using maplephp/prompts (cross-platform)
+        return $this->interactiveSelect($choices, $defaults, $label, $output);
+    }
+
+    /**
+     * Interactive selection using maplephp/prompts.
+     *
+     * Displays numbered options with default markers and accepts comma-separated numbers.
+     * Works natively on Windows, macOS, and Linux — no stty/POSIX required.
+     *
+     * @param array<string,string> $choices  key => display label
+     * @param array<int,string>     $defaults default keys
+     * @return array<int,string>     selected keys
+     */
+    private function interactiveSelect(array $choices, array $defaults, string $label, OutputInterface $output): array
+    {
+        $output->writeln('');
+        $output->writeln(sprintf('  <question>%s</question>', $label));
+        $output->writeln('  Enter numbers separated by commas (e.g. 1,3,5). Press Enter for defaults.');
+        $output->writeln('');
+
+        $index = [];
+        $i = 1;
+        $defaultNums = [];
+        foreach ($choices as $key => $text) {
+            $marker = in_array($key, $defaults, true) ? '*' : ' ';
+            $output->writeln(sprintf('    %s %2d. %s', $marker, $i, $text));
+            $index[$i] = $key;
+            if (in_array($key, $defaults, true)) {
+                $defaultNums[] = $i;
+            }
+            $i++;
+        }
+
+        $output->writeln('');
+        $output->writeln('    * = recommended default');
+        $output->writeln('');
+
+        $defaultStr = implode(',', $defaultNums);
+
+        // Use maplephp/prompts for a clean text input with validation
+        $prompt = new Prompt();
+        $prompt->set([
+            'selection' => [
+                'type' => 'list',
+                'message' => 'Your choice',
+                'default' => $defaultStr,
+                'validate' => [
+                    'length' => [0, 500],
+                ],
+            ],
+        ]);
+
+        try {
+            $result = $prompt->prompt();
+            $input = isset($result['selection']) ? trim((string) $result['selection']) : '';
+        } catch (\Throwable $e) {
+            // Fallback: read directly from STDIN if prompts library fails
+            $output->write(sprintf('  Your choice [<comment>%s</comment>]: ', $defaultStr));
+            $input = trim((string) fgets(STDIN));
+        }
+
+        // Empty input = accept defaults
+        if ($input === '') {
+            return $defaults;
+        }
+
+        // Parse comma-separated numbers
+        $selected = [];
+        foreach (array_map('trim', explode(',', $input)) as $num) {
+            $n = (int) $num;
+            if (isset($index[$n])) {
+                $selected[] = $index[$n];
+            }
+        }
+
+        return $selected !== [] ? array_values(array_unique($selected)) : $defaults;
     }
 
     /**

@@ -90,8 +90,13 @@ final class AgentRegistry
 
     private function commandExists(string $cmd): bool
     {
-        $which = stripos(PHP_OS_FAMILY, 'Windows') === 0 ? 'where' : 'command -v';
-        $out = @shell_exec($which . ' ' . escapeshellarg($cmd) . ' 2>/dev/null');
+        if (stripos(PHP_OS_FAMILY, 'Windows') === 0) {
+            // Windows: use 'where' command, redirect stderr to stdout
+            $out = @shell_exec('where ' . escapeshellarg($cmd) . ' 2>&1');
+        } else {
+            // Unix/macOS: use 'command -v', suppress errors
+            $out = @shell_exec('command -v ' . escapeshellarg($cmd) . ' 2>/dev/null');
+        }
         return is_string($out) && trim($out) !== '';
     }
 }

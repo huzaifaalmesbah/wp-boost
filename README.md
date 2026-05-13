@@ -11,6 +11,8 @@ Skills are sourced from [`WordPress/agent-skills`](https://github.com/WordPress/
 - **PHP 8.1+**
 - **[Composer](https://getcomposer.org) 2.x**
 
+Works on **macOS, Linux, and Windows** (native — no WSL required). Interactive prompts work across all platforms thanks to [maplephp/prompts](https://github.com/MaplePHP/Prompts).
+
 ### Don't have Composer yet?
 
 Check first:
@@ -42,7 +44,18 @@ composer global config bin-dir --absolute
 export PATH="$HOME/.composer/vendor/bin:$PATH"
 ```
 
-Reload your shell (`source ~/.zshrc`) and verify:
+**Windows PowerShell:** add to your PATH:
+
+```powershell
+# find the path
+composer global config bin-dir --absolute
+# e.g. C:\Users\you\AppData\Roaming\Composer\vendor\bin
+
+# add to your PowerShell profile
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Users\you\AppData\Roaming\Composer\vendor\bin", "User")
+```
+
+Reload your shell and verify:
 
 ```bash
 composer --version
