@@ -9,6 +9,7 @@ use Laravel\Prompts\Prompt;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\QuestionHelper;
+use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -235,34 +236,30 @@ final class InstallCommand extends Command
      */
     private function listSkills(OutputInterface $output, array $skills, string $type): void
     {
+        $output->writeln('');
         $output->writeln('  <comment>Available skills:</comment>');
         $output->writeln('');
 
-        // Calculate max display name width for alignment
-        $maxWidth = 0;
-        foreach ($skills as $skill) {
-            $width = mb_strlen($skill->displayName);
-            if ($width > $maxWidth) {
-                $maxWidth = $width;
-            }
-        }
-        $maxWidth = min($maxWidth, 35); // cap at 35 chars
-
         $recommendedSet = array_flip(ProjectType::recommendedSkills($type));
 
+        $rows = [];
         foreach ($skills as $skill) {
-            $marker = isset($recommendedSet[$skill->name]) ? '*' : ' ';
-            $paddedName = str_pad($skill->displayName, $maxWidth);
-            $output->writeln(sprintf(
-                '    %s <info>%s</info>  %s',
+            $marker = isset($recommendedSet[$skill->name]) ? '  *' : '   ';
+            $rows[] = [
                 $marker,
-                $paddedName,
+                $skill->displayName,
                 $skill->description !== '' ? $skill->description : '',
-            ));
+            ];
         }
 
+        $table = new Table($output);
+        $table->setStyle('compact');
+        $table->setHeaders([]);
+        $table->setRows($rows);
+        $table->render();
+
         $output->writeln('');
-        $output->writeln('    * = recommended for your project type');
+        $output->writeln('    <comment>*</comment> = recommended for your project type');
         $output->writeln('');
     }
 
