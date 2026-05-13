@@ -23,12 +23,23 @@ use Huzaifa\WpBoost\Support\Paths;
  * Interactive `install` command: detects project type and present agents, then copies the chosen
  * skills into each agent's skills directory and writes a `wp-boost.lock.json` for later re-sync.
  *
- * Uses Symfony Console ChoiceQuestion for cross-platform interactive multiselect
- * (works on Windows, macOS, Linux — no stty/POSIX required).
+ * Multiselect uses laravel/prompts (space-toggle) on macOS/Linux and falls back to
+ * Symfony ChoiceQuestion (comma-separated) on Windows and non-interactive terminals.
  */
 #[AsCommand(name: 'install', description: 'Install WordPress agent skills for your selected AI agents.')]
 final class InstallCommand extends Command
 {
+    /**
+     * Whether the current environment supports laravel/prompts (macOS/Linux with TTY).
+     */
+    private function promptsSupported(): bool
+    {
+        // laravel/prompts requires stty and throws RuntimeException on native Windows
+        return PHP_OS_FAMILY !== 'Windows'
+            && function_exists('shell_exec')
+            && @shell_exec('stty -a 2>/dev/null') !== null;
+    }
+
     protected function configure(): void
     {
         $this
@@ -220,8 +231,8 @@ final class InstallCommand extends Command
     /**
      * Resolve a list of items — from explicit CLI flags, --yes defaults, or interactive prompt.
      *
-     * Uses Symfony ChoiceQuestion with setMultiselect(true) for cross-platform support.
-     * Works on Windows, macOS, and Linux — no stty required.
+     * Uses laravel/prompts (space-toggle multiselect) on macOS/Linux, and falls back to
+     * Symfony ChoiceQuestion (comma-separated) on Windows and non-interactive terminals.
      *
      * @param array<string,string> $choices  key => label map
      * @param array<int,string>     $defaults default selection (keys)
@@ -244,11 +255,11 @@ final class InstallCommand extends Command
             $requested = array_filter(array_map('trim', explode(',', $explicit)), fn ($v) => $v !== '');
             $valid = [];
             $unknown = [];
-            foreach ($requested as $name) {
-                if (isset($choices[$name])) {
-                    $valid[] = $name;
+            foreach ($requested as $item) {
+                if (isset($choices[$item])) {
+                    $valid[] = $item;
                 } else {
-                    $unknown[] = $name;
+                    $unknown[] = $item;
                 }
             }
             if ($unknown !== []) {
@@ -272,21 +283,84 @@ final class InstallCommand extends Command
             return $defaults;
         }
 
-        // 3. Interactive multiselect using Symfony ChoiceQuestion (works on all OS)
-        return $this->interactiveMultiselect($choices, $defaults, $label, $input, $output);
+        // 3. Interactive: use laravel/prompts on macOS/Linux, Symfony fallback on Windows
+        if ($this->promptsSupported()) {
+            return $this->promptsMultiselect($choices, $defaults, $label);
+        }
+
+        return $this->symfonyMultiselect($choices, $defaults, $label, $input, $output);
     }
 
     /**
-     * Interactive multiselect using Symfony Console ChoiceQuestion.
+     * Interactive multiselect using laravel/prompts (space-toggle on macOS/Linux).
+     *
+     * ↑↓ to navigate, SPACE to toggle, ENTER to confirm.
+     *
+     * @param array<string,string> $choices  key => display label
+     * @param array<int,string>    $defaults default keys
+     * @return array<int,string>    selected keys
+     */
+    private function promptsMultiselect(array $choices, array $defaults, string $label): array
+    {
+        $options = [];
+        foreach ($choices as $key => $text) {
+            $options[$key] = $text;
+        }
+
+        // Default keys for pre-selection
+        $defaultKeys = [];
+        foreach ($defaults as $defaultKey) {
+            if (isset($options[$defaultKey])) {
+                $defaultKeys[] = $defaultKey;
+            }
+        }
+
+        // Mark recommended items with * in the label
+        $recommendedSet = array_flip($defaults);
+        $displayOptions = [];
+        foreach ($options as $key => $text) {
+            if (isset($recommendedSet[$key])) {
+                $displayOptions[$key] = $text . ' *';
+            } else {
+                $displayOptions[$key] = $text;
+            }
+        }
+
+        $hint = '* = recommended  |  ↑↓ navigate  |  SPACE toggle  |  ENTER confirm';
+
+        $selected = \Laravel\Prompts\multiselect(
+            label: $label,
+            options: $displayOptions,
+            default: $defaultKeys,
+            hint: $hint,
+        );
+
+        // Strip the ' *' suffix we added to recommended items
+        $result = [];
+        $flipped = array_flip($choices);
+        foreach ($selected as $value) {
+            $cleanValue = rtrim((string) $value, ' *');
+            if (isset($flipped[$cleanValue])) {
+                $result[] = $flipped[$cleanValue];
+            } elseif (isset($choices[$value])) {
+                $result[] = $value;
+            }
+        }
+
+        return $result !== [] ? array_values(array_unique($result)) : $defaults;
+    }
+
+    /**
+     * Interactive multiselect using Symfony ChoiceQuestion (fallback for Windows).
      *
      * Displays numbered options with default markers and accepts comma-separated
      * index numbers or values. Works natively on Windows, macOS, and Linux.
      *
      * @param array<string,string> $choices  key => display label
-     * @param array<int,string>     $defaults default keys
-     * @return array<int,string>     selected keys
+     * @param array<int,string>    $defaults default keys
+     * @return array<int,string>    selected keys
      */
-    private function interactiveMultiselect(
+    private function symfonyMultiselect(
         array $choices,
         array $defaults,
         string $label,
@@ -310,7 +384,6 @@ final class InstallCommand extends Command
         $output->writeln('');
 
         // Build the ChoiceQuestion
-        // ChoiceQuestion expects: choices as values array, and returns selected values
         $choiceValues = array_values($choices);
         $choiceKeys = array_keys($choices);
         $defaultIndices = [];

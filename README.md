@@ -11,7 +11,8 @@ Skills are sourced from [`WordPress/agent-skills`](https://github.com/WordPress/
 - **PHP 8.1+**
 - **[Composer](https://getcomposer.org) 2.x**
 
-Works on **macOS, Linux, and Windows** (native — no WSL required). Interactive multiselect prompts work across all platforms using Symfony Console's built-in `ChoiceQuestion`.
+Works on **macOS, Linux, and Windows** (native — no WSL required).
+Interactive multiselect uses **laravel/prompts** with space-toggle on macOS/Linux and falls back to Symfony `ChoiceQuestion` (comma-separated) on Windows.
 
 ### Don't have Composer yet?
 
