@@ -359,7 +359,8 @@ final class InstallCommand extends Command
             label: $label,
             options: $displayOptions,
             default: $defaultKeys,
-            hint: '* = recommended',
+            scroll: count($displayOptions),
+            hint: '* = recommended  ·  ↑↓ navigate  ·  SPACE toggle  ·  ENTER confirm',
         );
 
         // Strip the ' *' suffix we added to recommended items
@@ -407,7 +408,7 @@ final class InstallCommand extends Command
         }
 
         $output->writeln('');
-        $output->writeln('    * = recommended  |  Enter comma-separated numbers (e.g. 0,1,3)  |  Press Enter for defaults');
+        $output->writeln('    * = recommended  ·  Enter comma-separated numbers (e.g. 0,1,3)  ·  Enter = defaults');
         $output->writeln('');
 
         // Build the ChoiceQuestion

@@ -12,7 +12,8 @@ Skills are sourced from [`WordPress/agent-skills`](https://github.com/WordPress/
 - **[Composer](https://getcomposer.org) 2.x**
 
 Works on **macOS, Linux, and Windows** (native — no WSL required).
-Interactive multiselect uses **laravel/prompts** with space-toggle on macOS/Linux,
+Interactive multiselect uses **laravel/prompts** with space-toggle on macOS/Linux
+(all items visible, ↑↓ navigate, SPACE toggle, ENTER confirm),
 and automatically falls back to Symfony `ChoiceQuestion` (comma-separated input) on Windows —
 the same approach used by [Laravel Boost](https://github.com/laravel/boost).
 
