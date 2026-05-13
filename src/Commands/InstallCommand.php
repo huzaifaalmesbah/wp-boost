@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Huzaifa\WpBoost\Commands;
 
+use Laravel\Prompts\MultiSelectPrompt;
+use Laravel\Prompts\Prompt;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\QuestionHelper;
@@ -23,21 +25,50 @@ use Huzaifa\WpBoost\Support\Paths;
  * Interactive `install` command: detects project type and present agents, then copies the chosen
  * skills into each agent's skills directory and writes a `wp-boost.lock.json` for later re-sync.
  *
- * Multiselect uses laravel/prompts (space-toggle) on macOS/Linux and falls back to
- * Symfony ChoiceQuestion (comma-separated) on Windows and non-interactive terminals.
+ * Uses laravel/prompts for beautiful space-toggle multiselect on macOS/Linux.
+ * On Windows (or non-interactive terminals), falls back to Symfony ChoiceQuestion
+ * with comma-separated input — matching exactly how Laravel Boost handles Windows.
  */
 #[AsCommand(name: 'install', description: 'Install WordPress agent skills for your selected AI agents.')]
 final class InstallCommand extends Command
 {
     /**
-     * Whether the current environment supports laravel/prompts (macOS/Linux with TTY).
+     * Whether the laravel/prompts fallback has been configured for this process.
+     * Done once per process to register the Symfony-based fallback for Windows
+     * and non-interactive terminals, mirroring Laravel's own ConfiguresPrompts trait.
      */
-    private function promptsSupported(): bool
+    private static bool $fallbackConfigured = false;
+
+    /**
+     * Register the laravel/prompts fallback for Windows and non-interactive environments.
+     *
+     * This mirrors Laravel's ConfiguresPrompts trait: when prompts can't use TTY
+     * (Windows, pipes, CI), it falls back to Symfony ChoiceQuestion which works everywhere.
+     */
+    private function configurePromptsFallback(InputInterface $input, OutputInterface $output): void
     {
-        // laravel/prompts requires stty and throws RuntimeException on native Windows
-        return PHP_OS_FAMILY !== 'Windows'
-            && function_exists('shell_exec')
-            && @shell_exec('stty -a 2>/dev/null') !== null;
+        if (self::$fallbackConfigured) {
+            return;
+        }
+        self::$fallbackConfigured = true;
+
+        // Tell laravel/prompts where to write output
+        Prompt::setOutput($output);
+
+        // Fall back on Windows (no stty) and non-interactive terminals
+        Prompt::fallbackWhen(PHP_OS_FAMILY === 'Windows' || ! $input->isInteractive());
+
+        // Register the multiselect fallback: use Symfony ChoiceQuestion
+        // This is exactly what Laravel does in ConfiguresPrompts::configurePrompts()
+        MultiSelectPrompt::fallbackUsing(function (MultiSelectPrompt $prompt) use ($input, $output): array {
+            return $this->symfonyMultiselect(
+                $prompt->options,
+                $prompt->default,
+                $prompt->label,
+                $input,
+                $output,
+            );
+        });
     }
 
     protected function configure(): void
@@ -52,6 +83,9 @@ final class InstallCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        // Register fallbacks BEFORE any prompts are shown
+        $this->configurePromptsFallback($input, $output);
+
         $projectRoot = $input->getOption('path') ?: Paths::projectRoot();
         $projectRoot = realpath($projectRoot) ?: $projectRoot;
 
@@ -231,8 +265,8 @@ final class InstallCommand extends Command
     /**
      * Resolve a list of items — from explicit CLI flags, --yes defaults, or interactive prompt.
      *
-     * Uses laravel/prompts (space-toggle multiselect) on macOS/Linux, and falls back to
-     * Symfony ChoiceQuestion (comma-separated) on Windows and non-interactive terminals.
+     * Uses laravel/prompts (space-toggle) on macOS/Linux and falls back to
+     * Symfony ChoiceQuestion (comma-separated) on Windows — same approach as Laravel Boost.
      *
      * @param array<string,string> $choices  key => label map
      * @param array<int,string>     $defaults default selection (keys)
@@ -283,18 +317,18 @@ final class InstallCommand extends Command
             return $defaults;
         }
 
-        // 3. Interactive: use laravel/prompts on macOS/Linux, Symfony fallback on Windows
-        if ($this->promptsSupported()) {
-            return $this->promptsMultiselect($choices, $defaults, $label);
-        }
-
-        return $this->symfonyMultiselect($choices, $defaults, $label, $input, $output);
+        // 3. Interactive multiselect via laravel/prompts
+        //    On macOS/Linux: space-toggle multiselect (beautiful TTY)
+        //    On Windows/non-TTY: automatically falls back to Symfony ChoiceQuestion
+        //    (registered in configurePromptsFallback)
+        return $this->promptsMultiselect($choices, $defaults, $label);
     }
 
     /**
-     * Interactive multiselect using laravel/prompts (space-toggle on macOS/Linux).
+     * Interactive multiselect using laravel/prompts.
      *
-     * ↑↓ to navigate, SPACE to toggle, ENTER to confirm.
+     * On macOS/Linux with TTY: ↑↓ navigate, SPACE toggle, ENTER confirm
+     * On Windows/non-TTY: falls back to Symfony ChoiceQuestion (comma-separated)
      *
      * @param array<string,string> $choices  key => display label
      * @param array<int,string>    $defaults default keys
@@ -302,23 +336,10 @@ final class InstallCommand extends Command
      */
     private function promptsMultiselect(array $choices, array $defaults, string $label): array
     {
-        $options = [];
-        foreach ($choices as $key => $text) {
-            $options[$key] = $text;
-        }
-
-        // Default keys for pre-selection
-        $defaultKeys = [];
-        foreach ($defaults as $defaultKey) {
-            if (isset($options[$defaultKey])) {
-                $defaultKeys[] = $defaultKey;
-            }
-        }
-
         // Mark recommended items with * in the label
         $recommendedSet = array_flip($defaults);
         $displayOptions = [];
-        foreach ($options as $key => $text) {
+        foreach ($choices as $key => $text) {
             if (isset($recommendedSet[$key])) {
                 $displayOptions[$key] = $text . ' *';
             } else {
@@ -326,13 +347,19 @@ final class InstallCommand extends Command
             }
         }
 
-        $hint = '* = recommended  |  ↑↓ navigate  |  SPACE toggle  |  ENTER confirm';
+        // Default keys for pre-selection
+        $defaultKeys = [];
+        foreach ($defaults as $defaultKey) {
+            if (isset($displayOptions[$defaultKey])) {
+                $defaultKeys[] = $defaultKey;
+            }
+        }
 
         $selected = \Laravel\Prompts\multiselect(
             label: $label,
             options: $displayOptions,
             default: $defaultKeys,
-            hint: $hint,
+            hint: '* = recommended',
         );
 
         // Strip the ' *' suffix we added to recommended items
@@ -351,10 +378,10 @@ final class InstallCommand extends Command
     }
 
     /**
-     * Interactive multiselect using Symfony ChoiceQuestion (fallback for Windows).
+     * Symfony ChoiceQuestion fallback for Windows and non-interactive terminals.
      *
      * Displays numbered options with default markers and accepts comma-separated
-     * index numbers or values. Works natively on Windows, macOS, and Linux.
+     * index numbers or values. This is the same approach Laravel Boost uses.
      *
      * @param array<string,string> $choices  key => display label
      * @param array<int,string>    $defaults default keys
