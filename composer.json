@@ -22,6 +22,14 @@
         }
     },
     "bin": ["bin/wp-boost"],
+    "scripts": {
+        "post-install-cmd": [
+            "@php scripts/post-install-sync.php"
+        ],
+        "post-update-cmd": [
+            "@php scripts/post-install-sync.php"
+        ]
+    },
     "config": {
         "sort-packages": true
     }
