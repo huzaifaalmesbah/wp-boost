@@ -215,7 +215,7 @@ php /path/to/wp-boost/bin/wp-boost doctor
 
 Two workflows:
 
-- [`ci.yml`](./.github/workflows/ci.yml) — PHP matrix 8.1 → 8.5: `composer validate`, `php -l`, `doctor`, install fixture, update, `sync --upstream`, bundle-metadata assertion. Runs on every push/PR.
+- [`ci.yml`](./.github/workflows/ci.yml) — PHP matrix 8.1 → 8.5 on **Ubuntu**, plus 8.2 and 8.3 on **Windows**: `composer validate`, `php -l`, `doctor`, install fixture, update. Unix-only: `sync --upstream`, bundle-metadata assertion. Runs on every push/PR.
 - [`sync-skills.yml`](./.github/workflows/sync-skills.yml) — weekly cron (Mon 06:00 UTC) and `workflow_dispatch`: pulls upstream `trunk`, writes `skills/.bundle.json`, opens a review PR.
 
 ## Releasing

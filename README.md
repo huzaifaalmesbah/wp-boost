@@ -69,6 +69,8 @@ composer --version
 composer global require huzaifaalmesbah/wp-boost
 ```
 
+The post-install hook automatically syncs the latest skills from the vetted bundle — no extra step needed.
+
 Verify:
 
 ```bash
@@ -178,6 +180,12 @@ Afterwards, run `wp-boost update` inside each project you want to apply the new 
 |---|---|---|
 | **`huzaifaalmesbah/wp-boost@main`** (default) | Normal use | Vetted through PR review, ≤7 days behind upstream |
 | **`WordPress/agent-skills@trunk`** (`--upstream`) | You want the absolute latest or are debugging upstream changes | Unvetted — may contain broken/in-progress content |
+
+### Auto-sync on install
+
+When you install or update wp-boost via Composer, a post-install hook automatically syncs the latest skills from `huzaifaalmesbah/wp-boost@main`. This ensures you always have fresh skills even between composer releases.
+
+If the auto-sync fails (network issues, rate limits), the install still succeeds — just run `wp-boost sync` manually later.
 
 ### What exactly does `sync` / `--remote` change?
 
