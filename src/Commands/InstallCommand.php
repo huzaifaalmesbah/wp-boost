@@ -88,6 +88,7 @@ final class InstallCommand extends Command
             $agentChoices,
             $detectedAgents ?: array_keys($agentChoices),
             'Which AI agents would you like to configure? (comma-separated)',
+            'agents',
             (bool) $input->getOption('yes'),
             $input,
             $output,
@@ -118,6 +119,7 @@ final class InstallCommand extends Command
             $skillChoices,
             $defaultSkills,
             'Which WordPress skills would you like to install? (comma-separated)',
+            'skills',
             (bool) $input->getOption('yes'),
             $input,
             $output,
@@ -223,6 +225,8 @@ final class InstallCommand extends Command
      *
      * @param array<string,string> $choices  key => label map
      * @param array<int,string>     $defaults default selection (keys)
+     * @param string               $label    prompt question for interactive mode
+     * @param string               $name     short name for non-interactive messages (e.g. 'agents', 'skills')
      * @return array<int,string>     selected keys
      */
     private function resolveList(
@@ -230,6 +234,7 @@ final class InstallCommand extends Command
         array $choices,
         array $defaults,
         string $label,
+        string $name,
         bool $yes,
         InputInterface $input,
         OutputInterface $output,
@@ -260,8 +265,8 @@ final class InstallCommand extends Command
         if ($yes || ! $input->isInteractive()) {
             if (! $yes && ! $input->isInteractive()) {
                 $output->writeln(sprintf(
-                    '  <comment>Non-interactive terminal detected — using recommended defaults for "%s"</comment>',
-                    strtolower($label),
+                    '  <comment>Non-interactive terminal — using recommended %s</comment>',
+                    $name,
                 ));
             }
             return $defaults;
