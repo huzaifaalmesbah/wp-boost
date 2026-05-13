@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Huzaifa\WpBoost\Commands;
 
-use MaplePHP\Prompts\Prompt;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ChoiceQuestion;
 use Huzaifa\WpBoost\Agents\AgentRegistry;
 use Huzaifa\WpBoost\Detection\PresetRegistry;
 use Huzaifa\WpBoost\Detection\ProjectType;
@@ -22,7 +23,8 @@ use Huzaifa\WpBoost\Support\Paths;
  * Interactive `install` command: detects project type and present agents, then copies the chosen
  * skills into each agent's skills directory and writes a `wp-boost.lock.json` for later re-sync.
  *
- * Uses maplephp/prompts for cross-platform interactive prompts (works on Windows, macOS, Linux).
+ * Uses Symfony Console ChoiceQuestion for cross-platform interactive multiselect
+ * (works on Windows, macOS, Linux — no stty/POSIX required).
  */
 #[AsCommand(name: 'install', description: 'Install WordPress agent skills for your selected AI agents.')]
 final class InstallCommand extends Command
@@ -85,8 +87,9 @@ final class InstallCommand extends Command
             (string) $input->getOption('agents'),
             $agentChoices,
             $detectedAgents ?: array_keys($agentChoices),
-            'Which AI agents would you like to configure?',
+            'Which AI agents would you like to configure? (comma-separated)',
             (bool) $input->getOption('yes'),
+            $input,
             $output,
         );
 
@@ -114,8 +117,9 @@ final class InstallCommand extends Command
             (string) $input->getOption('skills'),
             $skillChoices,
             $defaultSkills,
-            'Which WordPress skills would you like to install?',
+            'Which WordPress skills would you like to install? (comma-separated)',
             (bool) $input->getOption('yes'),
+            $input,
             $output,
         );
 
@@ -214,14 +218,22 @@ final class InstallCommand extends Command
     /**
      * Resolve a list of items — from explicit CLI flags, --yes defaults, or interactive prompt.
      *
-     * Uses maplephp/prompts for cross-platform interactive selection (works on Windows, macOS, Linux).
+     * Uses Symfony ChoiceQuestion with setMultiselect(true) for cross-platform support.
+     * Works on Windows, macOS, and Linux — no stty required.
      *
      * @param array<string,string> $choices  key => label map
      * @param array<int,string>     $defaults default selection (keys)
      * @return array<int,string>     selected keys
      */
-    private function resolveList(string $explicit, array $choices, array $defaults, string $label, bool $yes, OutputInterface $output): array
-    {
+    private function resolveList(
+        string $explicit,
+        array $choices,
+        array $defaults,
+        string $label,
+        bool $yes,
+        InputInterface $input,
+        OutputInterface $output,
+    ): array {
         // 1. Explicit CLI flags — skip prompts entirely
         if ($explicit !== '') {
             $requested = array_filter(array_map('trim', explode(',', $explicit)), fn ($v) => $v !== '');
@@ -249,79 +261,73 @@ final class InstallCommand extends Command
             return $defaults;
         }
 
-        // 3. Interactive prompt using maplephp/prompts (cross-platform)
-        return $this->interactiveSelect($choices, $defaults, $label, $output);
+        // 3. Interactive multiselect using Symfony ChoiceQuestion (works on all OS)
+        return $this->interactiveMultiselect($choices, $defaults, $label, $input, $output);
     }
 
     /**
-     * Interactive selection using maplephp/prompts.
+     * Interactive multiselect using Symfony Console ChoiceQuestion.
      *
-     * Displays numbered options with default markers and accepts comma-separated numbers.
-     * Works natively on Windows, macOS, and Linux — no stty/POSIX required.
+     * Displays numbered options with default markers and accepts comma-separated
+     * index numbers or values. Works natively on Windows, macOS, and Linux.
      *
      * @param array<string,string> $choices  key => display label
      * @param array<int,string>     $defaults default keys
      * @return array<int,string>     selected keys
      */
-    private function interactiveSelect(array $choices, array $defaults, string $label, OutputInterface $output): array
-    {
+    private function interactiveMultiselect(
+        array $choices,
+        array $defaults,
+        string $label,
+        InputInterface $input,
+        OutputInterface $output,
+    ): array {
         $output->writeln('');
         $output->writeln(sprintf('  <question>%s</question>', $label));
-        $output->writeln('  Enter numbers separated by commas (e.g. 1,3,5). Press Enter for defaults.');
         $output->writeln('');
 
-        $index = [];
-        $i = 1;
-        $defaultNums = [];
+        // Show options with default markers
+        $i = 0;
         foreach ($choices as $key => $text) {
             $marker = in_array($key, $defaults, true) ? '*' : ' ';
-            $output->writeln(sprintf('    %s %2d. %s', $marker, $i, $text));
-            $index[$i] = $key;
-            if (in_array($key, $defaults, true)) {
-                $defaultNums[] = $i;
-            }
+            $output->writeln(sprintf('    %s [<comment>%d</comment>] %s', $marker, $i, $text));
             $i++;
         }
 
         $output->writeln('');
-        $output->writeln('    * = recommended default');
+        $output->writeln('    * = recommended default  |  Enter comma-separated numbers (e.g. 0,1,3)');
         $output->writeln('');
 
-        $defaultStr = implode(',', $defaultNums);
-
-        // Use maplephp/prompts for a clean text input with validation
-        $prompt = new Prompt();
-        $prompt->set([
-            'selection' => [
-                'type' => 'list',
-                'message' => 'Your choice',
-                'default' => $defaultStr,
-                'validate' => [
-                    'length' => [0, 500],
-                ],
-            ],
-        ]);
-
-        try {
-            $result = $prompt->prompt();
-            $input = isset($result['selection']) ? trim((string) $result['selection']) : '';
-        } catch (\Throwable $e) {
-            // Fallback: read directly from STDIN if prompts library fails
-            $output->write(sprintf('  Your choice [<comment>%s</comment>]: ', $defaultStr));
-            $input = trim((string) fgets(STDIN));
+        // Build the ChoiceQuestion
+        // ChoiceQuestion expects: choices as values array, and returns selected values
+        $choiceValues = array_values($choices);
+        $choiceKeys = array_keys($choices);
+        $defaultIndices = [];
+        foreach ($defaults as $defaultKey) {
+            $idx = array_search($defaultKey, $choiceKeys, true);
+            if ($idx !== false) {
+                $defaultIndices[] = (string) $idx;
+            }
         }
 
-        // Empty input = accept defaults
-        if ($input === '') {
-            return $defaults;
-        }
+        $question = new ChoiceQuestion(
+            '  Your choice',
+            $choiceValues,
+            implode(',', $defaultIndices),
+        );
+        $question->setMultiselect(true);
+        $question->setErrorMessage('Invalid selection. Please enter valid numbers.');
 
-        // Parse comma-separated numbers
+        /** @var QuestionHelper $helper */
+        $helper = $this->getHelper('question');
+        $selectedValues = $helper->ask($input, $output, $question);
+
+        // Map selected display labels back to keys
         $selected = [];
-        foreach (array_map('trim', explode(',', $input)) as $num) {
-            $n = (int) $num;
-            if (isset($index[$n])) {
-                $selected[] = $index[$n];
+        $flipped = array_flip($choices);
+        foreach ($selectedValues as $value) {
+            if (isset($flipped[$value])) {
+                $selected[] = $flipped[$value];
             }
         }
 

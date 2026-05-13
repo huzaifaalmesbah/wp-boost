@@ -11,7 +11,7 @@ Skills are sourced from [`WordPress/agent-skills`](https://github.com/WordPress/
 - **PHP 8.1+**
 - **[Composer](https://getcomposer.org) 2.x**
 
-Works on **macOS, Linux, and Windows** (native — no WSL required). Interactive prompts work across all platforms thanks to [maplephp/prompts](https://github.com/MaplePHP/Prompts).
+Works on **macOS, Linux, and Windows** (native — no WSL required). Interactive multiselect prompts work across all platforms using Symfony Console's built-in `ChoiceQuestion`.
 
 ### Don't have Composer yet?
 
