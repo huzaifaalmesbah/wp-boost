@@ -256,8 +256,14 @@ final class InstallCommand extends Command
             return array_values(array_unique($valid));
         }
 
-        // 2. --yes flag — use detected/recommended defaults
-        if ($yes) {
+        // 2. --yes flag or non-interactive terminal — use detected/recommended defaults
+        if ($yes || ! $input->isInteractive()) {
+            if (! $yes && ! $input->isInteractive()) {
+                $output->writeln(sprintf(
+                    '  <comment>Non-interactive terminal detected — using recommended defaults for "%s"</comment>',
+                    strtolower($label),
+                ));
+            }
             return $defaults;
         }
 

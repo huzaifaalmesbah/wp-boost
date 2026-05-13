@@ -37,9 +37,9 @@ jobs:
       - name: Run doctor
         run: php bin/wp-boost doctor
 
-      - name: Install into a plugin fixture (--yes mode)
+      - name: Install into fixture (interactive defaults --yes)
         run: |
-          mkdir -p /tmp/fixture && cd /tmp/fixture
+          mkdir -p /tmp/fixture-yes && cd /tmp/fixture-yes
           echo '<?php /* Plugin Name: Demo */' > demo.php
           php "$GITHUB_WORKSPACE/bin/wp-boost" install \
             --preset=plugin \
@@ -47,16 +47,28 @@ jobs:
             --yes
         shell: bash
 
-      - name: Assert skills were written
+      - name: Install into fixture (non-interactive, piped input)
         run: |
-          test -d /tmp/fixture/.claude/skills/wp-plugin-development
-          test -f /tmp/fixture/.cursor/rules/wp-plugin-development.mdc
-          test -f /tmp/fixture/wp-boost.lock.json
+          mkdir -p /tmp/fixture-ni && cd /tmp/fixture-ni
+          echo '<?php /* Plugin Name: Demo */' > demo.php
+          echo '' | php "$GITHUB_WORKSPACE/bin/wp-boost" install --preset=plugin
+        shell: bash
+
+      - name: Assert skills were written (--yes mode)
+        run: |
+          test -d /tmp/fixture-yes/.claude/skills/wp-plugin-development
+          test -f /tmp/fixture-yes/.cursor/rules/wp-plugin-development.mdc
+          test -f /tmp/fixture-yes/wp-boost.lock.json
+        shell: bash
+
+      - name: Assert skills were written (non-interactive mode)
+        run: |
+          test -f /tmp/fixture-ni/wp-boost.lock.json
         shell: bash
 
       - name: Update from bundled snapshot
         run: |
-          cd /tmp/fixture
+          cd /tmp/fixture-yes
           php "$GITHUB_WORKSPACE/bin/wp-boost" update
         shell: bash
 
