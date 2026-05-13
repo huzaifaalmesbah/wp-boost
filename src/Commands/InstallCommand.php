@@ -145,13 +145,11 @@ final class InstallCommand extends Command
         }
 
         // --- Skill selection ---
+        $this->listSkills($output, $allSkills, $type);
+
         $skillChoices = [];
         foreach ($allSkills as $skill) {
-            $label = $skill->displayName;
-            if ($skill->description !== '') {
-                $label .= ' — ' . $skill->description;
-            }
-            $skillChoices[$skill->name] = $label;
+            $skillChoices[$skill->name] = $skill->displayName;
         }
 
         $defaultSkills = array_values(array_intersect(
@@ -231,6 +229,44 @@ final class InstallCommand extends Command
     }
 
     /**
+     * Display available skills with descriptions in a clean list before selection.
+     *
+     * @param array<string,\Huzaifa\WpBoost\Skills\Skill> $skills
+     */
+    private function listSkills(OutputInterface $output, array $skills, string $type): void
+    {
+        $output->writeln('  <comment>Available skills:</comment>');
+        $output->writeln('');
+
+        // Calculate max display name width for alignment
+        $maxWidth = 0;
+        foreach ($skills as $skill) {
+            $width = mb_strlen($skill->displayName);
+            if ($width > $maxWidth) {
+                $maxWidth = $width;
+            }
+        }
+        $maxWidth = min($maxWidth, 35); // cap at 35 chars
+
+        $recommendedSet = array_flip(ProjectType::recommendedSkills($type));
+
+        foreach ($skills as $skill) {
+            $marker = isset($recommendedSet[$skill->name]) ? '*' : ' ';
+            $paddedName = str_pad($skill->displayName, $maxWidth);
+            $output->writeln(sprintf(
+                '    %s <info>%s</info>  %s',
+                $marker,
+                $paddedName,
+                $skill->description !== '' ? $skill->description : '',
+            ));
+        }
+
+        $output->writeln('');
+        $output->writeln('    * = recommended for your project type');
+        $output->writeln('');
+    }
+
+    /**
      * @param array<int,string> $writtenAgents
      * @param array<string,\Huzaifa\WpBoost\Skills\Skill> $skills
      */
@@ -241,8 +277,7 @@ final class InstallCommand extends Command
         $output->writeln('');
         $output->writeln('  <comment>Skills installed</comment>');
         foreach ($skills as $skill) {
-            $desc = $skill->description !== '' ? ' — ' . $skill->description : '';
-            $output->writeln('    · <info>' . $skill->displayName . '</info>' . $desc);
+            $output->writeln('    · <info>' . $skill->displayName . '</info>');
         }
         $output->writeln('');
         $output->writeln('  <comment>What\'s next?</comment>');
