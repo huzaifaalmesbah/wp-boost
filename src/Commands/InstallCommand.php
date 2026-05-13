@@ -87,7 +87,7 @@ final class InstallCommand extends Command
             (string) $input->getOption('agents'),
             $agentChoices,
             $detectedAgents ?: array_keys($agentChoices),
-            'Which AI agents would you like to configure? (comma-separated)',
+            'Select AI agents to configure',
             'agents',
             (bool) $input->getOption('yes'),
             $input,
@@ -118,7 +118,7 @@ final class InstallCommand extends Command
             (string) $input->getOption('skills'),
             $skillChoices,
             $defaultSkills,
-            'Which WordPress skills would you like to install? (comma-separated)',
+            'Select WordPress skills to install',
             'skills',
             (bool) $input->getOption('yes'),
             $input,
@@ -306,7 +306,7 @@ final class InstallCommand extends Command
         }
 
         $output->writeln('');
-        $output->writeln('    * = recommended default  |  Enter comma-separated numbers (e.g. 0,1,3)');
+        $output->writeln('    * = recommended  |  Enter comma-separated numbers (e.g. 0,1,3)  |  Press Enter for defaults');
         $output->writeln('');
 
         // Build the ChoiceQuestion
