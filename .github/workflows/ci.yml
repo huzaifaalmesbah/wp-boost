@@ -60,8 +60,7 @@ jobs:
           php "$GITHUB_WORKSPACE/bin/wp-boost" update
         shell: bash
 
-      - name: Sync bundle from upstream (network, Unix only)
-        if: runner.os != 'Windows'
+      - name: Sync bundle from upstream (network)
         run: php bin/wp-boost sync --upstream
 
       - name: Verify bundle metadata written
